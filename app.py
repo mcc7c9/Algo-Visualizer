@@ -29,42 +29,103 @@ def bubble_sort_steps(arr):
     steps.append((a[:], None, False))
     return steps
 
+def selection_sort_steps(arr):
+    a = arr[:]
+    steps = []
+    n = len(a)
+    for i in range(n):
+        min_idx = i
+        for j in range(i + 1, n):
+            steps.append((a[:], (min_idx, j), False))
+            if a[j] < a[min_idx]:
+                min_idx = j
+                steps.append((a[:], (min_idx, j), False))
+        if min_idx != i:
+            a[i], a[min_idx] = a[min_idx], a[i]
+            steps.append((a[:], (i, min_idx), True))
+    steps.append((a[:], None, False))
+    return steps
+
+def insertion_sort_steps(arr):
+    a = arr[:]
+    steps = []
+    n = len(a)
+    for i in range(1, n):
+        key = a[i]
+        j = i - 1
+        steps.append((a[:], (j, i), False))
+        while j >= 0 and a[j] > key:
+            a[j + 1] = a[j]
+            j -= 1
+            steps.append((a[:], (j, j + 1), True))
+        a[j + 1] = key
+        steps.append((a[:], (j + 1, i), True))
+    steps.append((a[:], None, False))
+    return steps
+
+
+def get_sort_steps(name, arr):
+    if name == "Bubble Sort":
+        return bubble_sort_steps(arr)
+    if name == "Selection Sort":
+        return selection_sort_steps(arr)
+    if name == "Insertion Sort":
+        return insertion_sort_steps(arr)
+    # default fallback: return final sorted array as single step
+    return [(sorted(arr), None, False)]
+
+
+
+
+
 st.set_page_config(page_title="Algorithm Visualizer", layout="wide")
 
-st.title("Algorithm Visualizer – Bubble Sort")
+st.title("Algorithm Visualizer")
 
 if "array" not in st.session_state:
     st.session_state.array = generate_random_array()
 
 col1, col2 = st.columns([1, 3])
 
+array = st.session_state.array
+
 with col1:
-    if st.button("New Array"):
-        st.session_state.array = generate_random_array()
+
+
+    algo = st.selectbox("Algorithm", ["Bubble Sort", "Selection Sort", "Insertion Sort"])
 
     speed = st.slider("Speed (seconds per step)", 0.01, 0.5, 0.1, 0.01)
 
-    auto_play = st.checkbox("Auto play", value=False)
+    if st.button("Sort"):
+        # Trigger animated sorting in the right column using selected algorithm
+        st.session_state.sorting = True
+        st.session_state.selected_algo = algo
 
-array = st.session_state.array
-steps = bubble_sort_steps(array)
+    if st.button("New Array"):
+        st.session_state.array = generate_random_array()
+        st.session_state.sorting = False
+
+
+
+
 
 with col2:
     placeholder = st.empty()
 
     def render_array(a, compare=None, swapped=False):
-        # Simple bar chart using streamlit's built-in chart
-        # You can also roll your own with matplotlib or altair
-        import pandas as pd
-        df = pd.DataFrame({"value": a})
-        # Highlight logic can get fancier; start simple
-        placeholder.bar_chart(df)
+        # Simple bar chart using streamlit's built-in chart without pandas
+        placeholder.bar_chart(a)
 
-    if auto_play:
+    # Always show the current array
+    render_array(array)
+
+    # If a sort was requested, animate the steps for the selected algorithm
+    if st.session_state.get("sorting", False):
+        selected = st.session_state.get("selected_algo")
+        steps = get_sort_steps(selected, array)
         for a, compare, swapped in steps:
             render_array(a, compare, swapped)
             time.sleep(speed)
-    else:
-        step_idx = st.slider("Step", 0, len(steps) - 1, 0)
-        a, compare, swapped = steps[step_idx]
-        render_array(a, compare, swapped)
+        # ensure the session array becomes the final sorted state
+        st.session_state.array = steps[-1][0]
+        st.session_state.sorting = False
